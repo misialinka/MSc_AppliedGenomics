@@ -85,21 +85,18 @@ maf_cosmic_adenoma <-  subsetMaf(maf = maf_cosmic, clinQuery = "histology == 'ad
 
 #summaries of mutations ------
 #Writes maf summary to an output file with basename maf_ls
-write.mafSummary(maf = maf_ls, basename = 'maf_ls')
+write.mafSummary(maf = maf_cosmic, basename = 'maf_ls')
 
 #getting summary of all mutations in samples 
-sample_summary <- getSampleSummary(maf_ls)
-view(sample_summary)
-
 cosmic_summary <- getSampleSummary(maf_cosmic)
 view(cosmic_summary)
 
 #Tumour mutational burden measures  ---------
 #plotting tumour mutational burden (tmb) for all samples. The graph shows that samples sequenced with WES form outliers in tmb analysis
-tmb_WES <- tmb(maf_ls, logScale = FALSE)
+tmb_WES <- tmb(maf_cosmic, logScale = FALSE)
 
 #selecting samples which were sequenced with WGS (and not WES) for TMB calculations, since WES samples form outliers 
-maf_ls_WGS <- subsetMaf(maf = maf_ls, clinQuery = "method == 'WGS'")
+maf_ls_WGS <- subsetMaf(maf = maf_cosmic, clinQuery = "method == 'WGS'")
 
 #subsetting mafs for each histology for tumour mutational burden calculations
 maf_serrated_WGS <- subsetMaf(maf = maf_ls_WGS, clinQuery = "histology == 'serrated'")
@@ -168,132 +165,25 @@ ggplot(fsmb_comparison, aes(x = Cohort, y = TMB, fill = Cohort)) +
                      label = "p.format") +  # Adjust Y position
   labs(title = "Tumor Frame Shift Mutation Burden Comparison", y = "FSMB (mut/Mb)")
 
-#creating a trinucleotide matrix to investigate mutational signatures. Investigating signatures is of interest to identify if both polyp types can be characterized by mismatch repair deficiency signatures (this is a signature characteristic for Lynch Syndrome) -------
-trinucleotides_ls <- trinucleotideMatrix(maf = maf_ls)
-trinucleotides_serrated <- trinucleotideMatrix(maf = maf_serrated)
-trinucleotides_adenoma <- trinucleotideMatrix(maf = maf_adenoma)
-
-#estimating signatures and visualizing with elbow plot to decide on number of signatures (Best possible value is the one at which the correlation value on the y-axis drops significantly)
-signatures_ls <- estimateSignatures(trinucleotides_ls, nTry = 10) #significant drop n=6
-signatures_serrated <- estimateSignatures(trinucleotides_serrated, nTry = 7)
-signatures_adenoma <- estimateSignatures(trinucleotides_adenoma, nTry =7, pConstant = 0.1)
-
-#extracting signatures (number of signatures based on the elbow graph)
-signatures_ls <- extractSignatures(trinucleotides_ls, n = 5)
-signatures_serrated <- extractSignatures(trinucleotides_serrated, n= 5)
-plotCophenetic(signatures_serrated)
-signatures_adenoma <- extractSignatures(trinucleotides_adenoma, n= 2)
-
-#comparing signatures from original 30 COSMIC signatures
-ls_cosmic <- compareSignatures(nmfRes = signatures_ls, sig_db = "legacy")
-serrated_cosmic <- compareSignatures(nmfRes = signatures_serrated, sig_db = "legacy")
-adenoma_cosmic <- compareSignatures(nmfRes = signatures_adenoma, sig_db = "legacy")
-
-#graphs overlap of my signatures with COSMIC signatures
-pheatmap(mat = ls_cosmic$cosine_similarities)
-
-#plot signatures and their match 
-dev.off()
-plotSignatures(nmfRes = signatures_ls, sig_db = "SBS")
-dev.off()
-plotSignatures(nmfRes = signatures_serrated, sig_db = "SBS")
-dev.off()
-plotSignatures(nmfRes = signatures_adenoma, contributions = TRUE, show_barcodes = TRUE, sig_db = "legacy")
-
-#plot contibution of signatures for individuals
-samples_order <- c("10436P_vs_10436N", "10842P_vs_10842N", "11316P_vs_11316N", "11452P_vs_11452N", "1624P_vs_1624N", "6310_Descending_polyp_vs_6310_Normal_tissue_transverse_biopsy_combined", "6310_Transverse_polyp_vs_6310_Normal_tissue_transverse_biopsy_combined", "6346_Rectal_polyp_vs_6346_Normal_tissue_rectal_hyperplastic_plaque_biopsy_combined", "6413_Caecum_polyp_vs_6413_Normal_tissue_caecum_biopsy_combined", "6976_Hepatic_flexure_polyp_vs_6976_Normal_tissue_Hepatic_flexure_combined", "8210_Sigmoid_polyp_vs_8210_Sigmoid_normal_combined", "8347_Sigmoid_polyp_vs_8347_Sigmoid_normal_combined", "8637_Sigmoid_Polyp_vs_8637_Sigmoid_normal_combined", "S43_8347_Pol_vs_S44_8347_Nor_combined", "4732_Caecum_polyp_vs_4732_Caecum_normal_combined", "4732_Transverse_polyp_vs_4732_Transverse_normal_combined", "6344_Descending_polyp_vs_6344_Normal_tissue_sigmoid_biopsy_combined", "6411_Transverse_polyp_vs_6411_Normal_tissue_transverse_biopsy_combined", "6794_Ascending_Polyp_vs_6794_Normal_tissue_rectal_biopsy_combined", "6794_Rectal_polyp_vs_6794_Normal_tissue_rectal_biopsy_combined", "S37_7713_Pol_vs_S38_7713_Nor_combined", "S39_7984_Pol_vs_S41_7984_Nor_combined", "S40_7984_Pol_vs_S42_7984_Nor_combined")
-dev.off()
-plotSignatures(nmfRes = signatures_ls, contributions = TRUE, show_barcodes = TRUE, patient_order = samples_order, sig_db = "SBS")
-dev.off()
-plotSignatures(nmfRes = signatures_serrated, contributions = TRUE, show_barcodes = TRUE, sig_db = "SBS")
-dev.off()
-plotSignatures(nmfRes = signatures_adenoma, contributions = TRUE, show_barcodes = TRUE, sig_db = "SBS")
-
 #oncoplots for all samples ------
-#oncoplot for top ten mutated genes.
+#oncoplot for top 50 mutated genes - I could see HLA-A and HLA-DRB1 and HLA-DRB5 among these genes. 
 oncoplot(
-  maf = maf_cosmic, top = 20,
+  maf = maf_cosmic, top = 50,
   draw_titv = TRUE, 
   clinicalFeatures = c('histology', 'location'),
-  sortByAnnotation = TRUE
+  sortByAnnotation = TRUE,
+  showTumorSampleBarcodes = TRUE
 )
 
-#oncoplot including pathways. smgbp for biological pathways. sigpw for oncogenic pathways. check out ?oncoplot for more functions, susch as collapsing pathways
+#oncoplot including pathways. smgbp for biological pathways. sigpw for oncogenic pathways. check out ?oncoplot for more functions, susch as collapsing pathways. The two main mutated genes in the immune signalling pathway were HLA-A and HLA-B. 
+dev.off()
 oncoplot(maf = maf_cosmic, 
          draw_titv = TRUE,
          pathways = 'smgbp', topPathways = 5, 
-         collapsePathway = TRUE,
+         collapsePathway = FALSE,
          sortByAnnotation = TRUE,
          clinicalFeatures = c("histology", "location")
 )
-
-#plots for known drivers of histology  --------
-#oncoplot for known drivers of serrated/adenomas
-oncoplot(
-  maf = maf_ls, genes = c("KRAS", "NRAS", "RNF43", "ZNF3", "TGFBR2", "BRAF", "APC"),
-  draw_titv = TRUE,
-  clinicalFeatures = c('histology', 'side'),
-  sortByAnnotation = TRUE
-)
-
-oncoplot(
-  maf = maf_cosmic, genes = c("KRAS", "NRAS", "RNF43", "ZNF3", "TGFBR2", "BRAF", "APC"),
-  draw_titv = TRUE,
-  clinicalFeatures = c('histology', 'location'),
-  sortByAnnotation = TRUE
-)
-
-coOncoplot(m1 = maf_cosmic_serrated, 
-           m2 = maf_cosmic_adenoma,
-           genes = c("KRAS", "NRAS", "RNF43", "ZNF3", "TGFBR2", "BRAF", "APC"),
-           clinicalFeatures1 = c('location'),
-           clinicalFeatures2 = c('location'),
-           sortByAnnotation1 = TRUE,
-           sortByAnnotation2 = TRUE
-)
-
-
-#creating lollipop plots for the known drivers of histology 
-KRAS_plot <- lollipopPlot2(m1 = maf_cosmic_serrated, m2 = maf_cosmic_adenoma, gene = "KRAS", m1_name = "Serrated", m2_name = "Adenoma", m1_label = 'all', m2_label = 'all', labPosAngle = 25)
-NRAS_plot <- lollipopPlot2(m1 = maf_cosmic_serrated, m2 = maf_cosmic_adenoma, gene = "NRAS", m1_name = "Serrated", m2_name = "Adenoma", m1_label = 'all', m2_label = 'all', labPosAngle = 25)
-RNF43_plot <- lollipopPlot2(m1 = maf_cosmic_serrated, m2 = maf_cosmic_adenoma, gene = "RNF43", m1_name = "Serrated", m2_name = "Adenoma", m1_label = 'all', m2_label = 'all', labPosAngle = 25)
-ZNF3_plot <- lollipopPlot2(m1 = maf_cosmic_serrated, m2 = maf_cosmic_adenoma, gene = "ZNF3", m1_name = "Serrated", m2_name = "Adenoma", m1_label = 'all', m2_label = 'all', labPosAngle = 25)
-TGFBR2_plot <- lollipopPlot2(m1 = maf_cosmic_serrated, m2 = maf_cosmic_adenoma, gene = "TGFBR2", m1_name = "Serrated", m2_name = "Adenoma", m1_label = 'all', m2_label = 'all', labPosAngle = 25)
-BRAF_plot <- lollipopPlot2(m1 = maf_cosmic_serrated, m2 = maf_cosmic_adenoma, gene = "BRAF", m1_name = "Serrated", m2_name = "Adenoma", m1_label = 'all', m2_label = 'all', labPosAngle = 25)
-APC_plot <- lollipopPlot2(m1 = maf_cosmic_serrated, m2 = maf_cosmic_adenoma, gene = "APC", m1_name = "Serrated", m2_name = "Adenoma", m1_label = 'all', m2_label = 'all', labPosAngle = 25)
-
-#subsetting the unique serrated, unique adenoma and shared genes for analysis
-unique_serrated_maf <- subsetMaf(maf_serrated, genes = unique_serrated)
-unique_adenoma_maf <- subsetMaf(maf_adenoma, genes = unique_adenoma)
-shared_maf <- subsetMaf(maf_ls, genes = shared_genes)
-
-#creating oncoplots with pathway enrichment for each subset. oncoplots for oncogenic pathways
-dev.off()
-oncoplot(maf = unique_serrated_maf, 
-         draw_titv = TRUE,
-         pathways = 'smgbp', topPathways = 4, 
-         gene_mar = 4.5,
-         sortByAnnotation = TRUE,
-         clinicalFeatures = "side", 
-         titleText = "altered in serrated only")
-
-dev.off()
-oncoplot(maf = unique_adenoma_maf, 
-         draw_titv = TRUE,
-         pathways = 'smgbp', topPathways = 4, 
-         gene_mar = 8.5,
-         sortByAnnotation = TRUE,
-         clinicalFeatures = c("histology", "location"), 
-         titleText = "altered adenoma only")
-
-dev.off()
-oncoplot(maf = shared_maf, 
-         draw_titv = TRUE,
-         pathways = 'smgbp', topPathways = 6, 
-         gene_mar = 4.5,
-         sortByAnnotation = TRUE,
-         clinicalFeatures = c("histology", "location"),
-         titleText = "altered in both histplogies only")
 
 #plots for antigen presentation ------
 #creating antigen presentation signature based on "The genomic landscape of 2,023 colorectal cancers", Cornish et al, 2024
@@ -307,9 +197,17 @@ hla_genes <- data_frame(
   stringsAsFactors = FALSE
 )
 
-#creating an oncoplot for my own signature
+#creating an oncoplot for my own signature for antigen presentation genes, for serrated and adenomatous
 dev.off()
-oncoplot(maf = maf_cosmic, 
+oncoplot(maf = maf_cosmic_adenoma, 
+         draw_titv = TRUE,
+         pathways = hla_genes, 
+         gene_mar = 8.5,
+         #collapsePathway = TRUE,
+         sortByAnnotation = TRUE,
+         clinicalFeatures = c("histology", "location"))
+dev.off()
+oncoplot(maf = maf_cosmic_serrated, 
          draw_titv = TRUE,
          pathways = hla_genes, 
          gene_mar = 8.5,
@@ -317,25 +215,11 @@ oncoplot(maf = maf_cosmic,
          sortByAnnotation = TRUE,
          clinicalFeatures = c("histology", "location"))
 
-coOncoplot(m1 = maf_cosmic_serrated, m2 = maf_cosmic_adenoma, 
-           genes = hla_genes$Genes)
-
-
-#cooncoplot for immune signalling genes mutated in all genes 
-coOncoplot(m1 = maf_cosmic_serrated, m2 = maf_cosmic_adenoma, m1Name = "serrated", m2Name = "adenoma", genes = hla_genes$Genes, clinicalFeatures1 = "location", clinicalFeatures2 = "location", outer_mar = 4, sortByAnnotation1 = TRUE, sortByAnnotation2 = TRUE)
-
 #investigating if there are mutations in the immune checkpoin inhibitors 
 icb_genes <- c("CD274", "CTLA4", "PDCD1", "HAVCR2", "TIGIT", "LAG3")
 
 dev.off()
-oncoplot(maf = maf_cosmic_serrated, 
-         draw_titv = TRUE,
-         genes = icb_genes,
-         sortByAnnotation = TRUE,
-         clinicalFeatures = c("histology", "location"))
-
-dev.off()
-oncoplot(maf = maf_cosmic_adenoma, 
+oncoplot(maf = maf_cosmic, 
          draw_titv = TRUE,
          genes = icb_genes,
          sortByAnnotation = TRUE,
